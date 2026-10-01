@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="studentApp">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Student Management</title>
+
+    <!-- AngularJS CDN -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+</head>
+
+<body ng-controller="StudentController">
+
+    <h1>Student Management System</h1>
+
+    <hr>
+
+    <!-- Student Form -->
+    <h2>{{ editMode ? "Update Student" : "Add Student" }}</h2>
+
+    <form ng-submit="editMode ? updateStudent() : addStudent()">
+
+        <label>Name:</label>
+        <input type="text" ng-model="student.name" required>
+
+        <br><br>
+
+        <label>Email:</label>
+        <input type="email" ng-model="student.email" required>
+
+        <br><br>
+
+        <label>Age:</label>
+        <input type="number" ng-model="student.age" required>
+
+        <br><br>
+
+        <label>Course:</label>
+        <input type="text" ng-model="student.course" required>
+
+        <br><br>
+
+        <!-- Add / Update Button -->
+        <button type="submit">
+            {{ editMode ? "Update Student" : "Add Student" }}
+        </button>
+
+        <!-- Cancel Button -->
+        <button type="button" ng-if="editMode" ng-click="cancelEdit()">
+            Cancel
+        </button>
+
+    </form>
+
+    <hr>
+
+    <!-- Student List -->
+    <h2>Student List</h2>
+
+    <table border="1" cellpadding="10">
+
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Age</th>
+            <th>Course</th>
+            <th>Actions</th>
+        </tr>
+
+        <tr ng-repeat="s in students">
+
+            <td>{{ s.name }}</td>
+            <td>{{ s.email }}</td>
+            <td>{{ s.age }}</td>
+            <td>{{ s.course }}</td>
+
+            <td>
+                <button ng-click="editStudent(s)">
+                    Edit
+                </button>
+
+                <button ng-click="deleteStudent(s._id)">
+                    Delete
+                </button>
+            </td>
+
+        </tr>
+
+    </table>
+
+
+    <script>
+
+        // Create AngularJS Application
+        var app = angular.module("studentApp", []);
+
+
+        // Create Controller
+        app.controller("StudentController", function($scope, $http) {
+
+            // Backend URL
+            var API_URL = "http://localhost:5000";
+
+
+            // Store students
+            $scope.students = [];
+
+
+            // Store form data
+            $scope.student = {};
+
+
+            // Check whether we are editing
+            $scope.editMode = false;
+
+
+            // Get all students
+            $scope.loadStudents = function() {
+
+                $http.get(API_URL + "/students")
+
+                .then(function(response) {
+
+                    $scope.students = response.data;
+
+                });
+
+            };
+
+
+            // Add student
+            $scope.addStudent = function() {
+
+                $http.post(API_URL + "/students", $scope.student)
+
+                .then(function(response) {
+
+                    // Add new student to table
+                    $scope.students.push(response.data);
+
+                    // Clear form
+                    $scope.student = {};
+
+                });
+
+            };
+
+
+            // Edit student
+            $scope.editStudent = function(student) {
+
+                // Copy student data into form
+                $scope.student = angular.copy(student);
+
+                // Change to edit mode
+                $scope.editMode = true;
+
+            };
+
+
+            // Update student
+            $scope.updateStudent = function() {
+
+                $http.put(
+                    API_URL + "/students/" + $scope.student._id,
+                    $scope.student
+                )
+
+                .then(function(response) {
+
+                    // Reload student list
+                    $scope.loadStudents();
+
+                    // Clear form
+                    $scope.student = {};
+
+                    // Change back to add mode
+                    $scope.editMode = false;
+
+                });
+
+            };
+
+
+            // Delete student
+            $scope.deleteStudent = function(id) {
+
+                $http.delete(API_URL + "/students/" + id)
+
+                .then(function() {
+
+                    // Reload student list
+                    $scope.loadStudents();
+
+                });
+
+            };
+
+
+            // Cancel editing
+            $scope.cancelEdit = function() {
+
+                $scope.student = {};
+
+                $scope.editMode = false;
+
+            };
+
+
+            // Load students when page opens
+            $scope.loadStudents();
+
+        });
+
+    </script>
+
+</body>
+
+</html>
