@@ -1,220 +1,506 @@
+
 <!DOCTYPE html>
 <html lang="en" ng-app="studentApp">
 
 <head>
     <meta charset="UTF-8">
-    <title>Student Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System</title>
 
-    <!-- AngularJS CDN -->
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            width: 250px;
+            max-width: 90%;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #999;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .message {
+            margin: 12px 0;
+            color: #b00020;
+        }
+
+        .success {
+            color: #16733a;
+        }
+
+        .auth-box {
+            max-width: 380px;
+        }
+    </style>
 </head>
 
 <body ng-controller="StudentController">
 
     <h1>Student Management System</h1>
 
-    <hr>
+    <p class="message" ng-if="message"
+       ng-class="{success: messageType === 'success'}">
+        {{ message }}
+    </p>
 
-    <!-- Student Form -->
-    <h2>{{ editMode ? "Update Student" : "Add Student" }}</h2>
+    <!-- REGISTRATION AND LOGIN -->
 
-    <form ng-submit="editMode ? updateStudent() : addStudent()">
+    <div ng-if="!isLoggedIn" class="auth-box">
 
-        <label>Name:</label>
-        <input type="text" ng-model="student.name" required>
+        <div ng-if="authMode === 'login'">
 
-        <br><br>
+            <h2>Login</h2>
 
-        <label>Email:</label>
-        <input type="email" ng-model="student.email" required>
+            <form ng-submit="login()">
 
-        <br><br>
+                <label>Email:</label><br>
+                <input type="email"
+                       ng-model="auth.email"
+                       required>
+                <br>
 
-        <label>Age:</label>
-        <input type="number" ng-model="student.age" required>
+                <label>Password:</label><br>
+                <input type="password"
+                       ng-model="auth.password"
+                       required>
+                <br>
 
-        <br><br>
+                <button type="submit">Login</button>
 
-        <label>Course:</label>
-        <input type="text" ng-model="student.course" required>
+            </form>
 
-        <br><br>
+            <p>
+                Don't have an account?
+                <button type="button" ng-click="showRegister()">
+                    Register
+                </button>
+            </p>
 
-        <!-- Add / Update Button -->
-        <button type="submit">
-            {{ editMode ? "Update Student" : "Add Student" }}
+        </div>
+
+        <div ng-if="authMode === 'register'">
+
+            <h2>Register</h2>
+
+            <form ng-submit="register()">
+
+                <label>Name:</label><br>
+                <input type="text"
+                       ng-model="auth.name"
+                       required>
+                <br>
+
+                <label>Email:</label><br>
+                <input type="email"
+                       ng-model="auth.email"
+                       required>
+                <br>
+
+                <label>Password (minimum 8 characters):</label><br>
+                <input type="password"
+                       ng-model="auth.password"
+                       minlength="8"
+                       required>
+                <br>
+
+                <button type="submit">Create Account</button>
+
+            </form>
+
+            <p>
+                Already registered?
+                <button type="button" ng-click="showLogin()">
+                    Login
+                </button>
+            </p>
+
+        </div>
+
+    </div>
+
+    <!-- STUDENT DASHBOARD -->
+
+    <div ng-if="isLoggedIn">
+
+        <p>
+            Welcome, {{ currentUser.name }}!
+            <button type="button" ng-click="logout()">
+                Logout
+            </button>
+        </p>
+
+        <hr>
+
+        <!-- ADD / UPDATE STUDENT -->
+
+        <h2>{{ editMode ? "Update Student" : "Add Student" }}</h2>
+
+        <form ng-submit="editMode ? updateStudent() : addStudent()">
+
+            <label>Name:</label><br>
+            <input type="text" ng-model="student.name" required>
+            <br>
+
+            <label>Email:</label><br>
+            <input type="email" ng-model="student.email" required>
+            <br>
+
+            <label>Age:</label><br>
+            <input type="number"
+                   ng-model="student.age"
+                   min="1"
+                   required>
+            <br>
+
+            <label>Course:</label><br>
+            <input type="text" ng-model="student.course" required>
+            <br>
+
+            <button type="submit">
+                {{ editMode ? "Update Student" : "Add Student" }}
+            </button>
+
+            <button type="button"
+                    ng-if="editMode"
+                    ng-click="cancelEdit()">
+                Cancel
+            </button>
+
+        </form>
+
+        <hr>
+
+        <!-- STUDENT LIST -->
+
+        <h2>Student List</h2>
+
+        <button type="button" ng-click="loadStudents()">
+            Refresh List
         </button>
 
-        <!-- Cancel Button -->
-        <button type="button" ng-if="editMode" ng-click="cancelEdit()">
-            Cancel
-        </button>
+        <p ng-if="students.length === 0">
+            No students found.
+        </p>
 
-    </form>
+        <table ng-if="students.length > 0">
 
-    <hr>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Age</th>
+                <th>Course</th>
+                <th>Actions</th>
+            </tr>
 
-    <!-- Student List -->
-    <h2>Student List</h2>
+            <tr ng-repeat="s in students track by s._id">
 
-    <table border="1" cellpadding="10">
+                <td>{{ s.name }}</td>
+                <td>{{ s.email }}</td>
+                <td>{{ s.age }}</td>
+                <td>{{ s.course }}</td>
 
-        <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Age</th>
-            <th>Course</th>
-            <th>Actions</th>
-        </tr>
+                <td>
+                    <button type="button"
+                            ng-click="editStudent(s)">
+                        Edit
+                    </button>
 
-        <tr ng-repeat="s in students">
+                    <button type="button"
+                            ng-click="deleteStudent(s._id)">
+                        Delete
+                    </button>
+                </td>
 
-            <td>{{ s.name }}</td>
-            <td>{{ s.email }}</td>
-            <td>{{ s.age }}</td>
-            <td>{{ s.course }}</td>
+            </tr>
 
-            <td>
-                <button ng-click="editStudent(s)">
-                    Edit
-                </button>
+        </table>
 
-                <button ng-click="deleteStudent(s._id)">
-                    Delete
-                </button>
-            </td>
-
-        </tr>
-
-    </table>
-
+    </div>
 
     <script>
-
-        // Create AngularJS Application
         var app = angular.module("studentApp", []);
 
+        // Attach the JWT to every API request.
+        app.factory("AuthInterceptor", function($q) {
 
-        // Create Controller
+            return {
+                request: function(config) {
+
+                    var token = localStorage.getItem("token");
+
+                    if (token) {
+                        config.headers.Authorization =
+                            "Bearer " + token;
+                    }
+
+                    return config;
+                },
+
+                responseError: function(response) {
+
+                    if (
+                        response.status === 401 &&
+                        localStorage.getItem("token")
+                    ) {
+                        localStorage.removeItem("token");
+                        localStorage.removeItem("currentUser");
+
+                        window.location.reload();
+                    }
+
+                    return $q.reject(response);
+                }
+            };
+        });
+
+        app.config(function($httpProvider) {
+            $httpProvider.interceptors.push("AuthInterceptor");
+        });
+
         app.controller("StudentController", function($scope, $http) {
 
-            // Backend URL
-             var API_URL = "https://student-management-backend-4i5s.onrender.com";
+            // Your existing Render backend URL.
+            var API_URL =
+                "https://student-management-backend-4i5s.onrender.com";
 
-
-
-            // Store students
             $scope.students = [];
-
-
-            // Store form data
             $scope.student = {};
-
-
-            // Check whether we are editing
+            $scope.auth = {};
             $scope.editMode = false;
+            $scope.authMode = "login";
+            $scope.message = "";
+            $scope.messageType = "";
 
+            $scope.currentUser = JSON.parse(
+                localStorage.getItem("currentUser") || "null"
+            );
 
-            // Get all students
+            $scope.isLoggedIn =
+                !!localStorage.getItem("token");
+
+            function showMessage(message, type) {
+                $scope.message = message;
+                $scope.messageType = type || "error";
+            }
+
+            function handleError(error, defaultMessage) {
+                showMessage(
+                    error.data && error.data.message
+                        ? error.data.message
+                        : defaultMessage,
+                    "error"
+                );
+            }
+
+            // Show registration form.
+            $scope.showRegister = function() {
+                $scope.authMode = "register";
+                $scope.auth = {};
+                $scope.message = "";
+            };
+
+            // Show login form.
+            $scope.showLogin = function() {
+                $scope.authMode = "login";
+                $scope.auth = {};
+                $scope.message = "";
+            };
+
+            // Register a new user.
+            $scope.register = function() {
+
+                $http.post(API_URL + "/register", $scope.auth)
+                    .then(function(response) {
+
+                        showMessage(
+                            response.data.message,
+                            "success"
+                        );
+
+                        $scope.authMode = "login";
+                        $scope.auth.password = "";
+
+                    })
+                    .catch(function(error) {
+                        handleError(error, "Registration failed");
+                    });
+            };
+
+            // Login an existing user.
+            $scope.login = function() {
+
+                $http.post(API_URL + "/login", {
+                    email: $scope.auth.email,
+                    password: $scope.auth.password
+                })
+                .then(function(response) {
+
+                    localStorage.setItem(
+                        "token",
+                        response.data.token
+                    );
+
+                    localStorage.setItem(
+                        "currentUser",
+                        JSON.stringify(response.data.user)
+                    );
+
+                    $scope.currentUser = response.data.user;
+                    $scope.isLoggedIn = true;
+                    $scope.auth = {};
+                    $scope.message = "";
+
+                    $scope.loadStudents();
+
+                })
+                .catch(function(error) {
+                    handleError(error, "Login failed");
+                });
+            };
+
+            // Logout.
+            $scope.logout = function() {
+
+                localStorage.removeItem("token");
+                localStorage.removeItem("currentUser");
+
+                $scope.isLoggedIn = false;
+                $scope.currentUser = null;
+                $scope.students = [];
+                $scope.student = {};
+                $scope.editMode = false;
+                $scope.auth = {};
+                $scope.authMode = "login";
+
+                showMessage("You have logged out.", "success");
+            };
+
+            // Get all students.
             $scope.loadStudents = function() {
 
                 $http.get(API_URL + "/students")
+                    .then(function(response) {
 
-                .then(function(response) {
+                        $scope.students = response.data;
 
-                    $scope.students = response.data;
-
-                });
-
+                    })
+                    .catch(function(error) {
+                        handleError(error, "Error fetching students");
+                    });
             };
 
-
-            // Add student
+            // Add student.
             $scope.addStudent = function() {
 
                 $http.post(API_URL + "/students", $scope.student)
+                    .then(function(response) {
 
-                .then(function(response) {
+                        $scope.students.push(response.data);
+                        $scope.student = {};
 
-                    // Add new student to table
-                    $scope.students.push(response.data);
+                        showMessage(
+                            "Student added successfully.",
+                            "success"
+                        );
 
-                    // Clear form
-                    $scope.student = {};
-
-                });
-
+                    })
+                    .catch(function(error) {
+                        handleError(error, "Error adding student");
+                    });
             };
 
-
-            // Edit student
+            // Edit student.
             $scope.editStudent = function(student) {
 
-                // Copy student data into form
                 $scope.student = angular.copy(student);
-
-                // Change to edit mode
                 $scope.editMode = true;
-
+                $scope.message = "";
             };
 
-
-            // Update student
+            // Update student.
             $scope.updateStudent = function() {
 
                 $http.put(
                     API_URL + "/students/" + $scope.student._id,
                     $scope.student
                 )
-
-                .then(function(response) {
-
-                    // Reload student list
-                    $scope.loadStudents();
-
-                    // Clear form
-                    $scope.student = {};
-
-                    // Change back to add mode
-                    $scope.editMode = false;
-
-                });
-
-            };
-
-
-            // Delete student
-            $scope.deleteStudent = function(id) {
-
-                $http.delete(API_URL + "/students/" + id)
-
                 .then(function() {
 
-                    // Reload student list
+                    $scope.student = {};
+                    $scope.editMode = false;
+
+                    showMessage(
+                        "Student updated successfully.",
+                        "success"
+                    );
+
                     $scope.loadStudents();
 
+                })
+                .catch(function(error) {
+                    handleError(error, "Error updating student");
                 });
-
             };
 
+            // Delete student.
+            $scope.deleteStudent = function(id) {
 
-            // Cancel editing
+                if (!confirm("Are you sure you want to delete this student?")) {
+                    return;
+                }
+
+                $http.delete(API_URL + "/students/" + id)
+                    .then(function() {
+
+                        showMessage(
+                            "Student deleted successfully.",
+                            "success"
+                        );
+
+                        $scope.loadStudents();
+
+                    })
+                    .catch(function(error) {
+                        handleError(error, "Error deleting student");
+                    });
+            };
+
+            // Cancel editing.
             $scope.cancelEdit = function() {
 
                 $scope.student = {};
-
                 $scope.editMode = false;
-
+                $scope.message = "";
             };
 
-
-            // Load students when page opens
-            $scope.loadStudents();
+            // Load students after refreshing a logged-in page.
+            if ($scope.isLoggedIn) {
+                $scope.loadStudents();
+            }
 
         });
-
     </script>
 
 </body>
-
 </html>
